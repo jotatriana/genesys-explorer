@@ -2,7 +2,7 @@
 Genesys Cloud Explorer — Flask Web Application
 A visual tool for exploring and managing Genesys Cloud PureCloud APIs.
 
-Run:  python app.py
+Run:  python main.py
 Then:  http://localhost:5000
 """
 

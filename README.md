@@ -120,7 +120,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-python app.py
+python main.py
 ```
 
 Open your browser to **http://localhost:5000**
@@ -135,7 +135,7 @@ Open your browser to **http://localhost:5000**
 
 ```
 genesys_explorer/
-├── app.py                      # Single-file Flask backend (639 lines)
+├── main.py                      # Single-file Flask backend (639 lines)
 │                                 - GCClient SDK wrapper
 │                                 - Auth decorator & session management
 │                                 - All routes (16 endpoints)
@@ -165,7 +165,7 @@ genesys_explorer/
 
 | Decision | Rationale |
 |----------|-----------|
-| **Single `app.py`** | Eliminates circular imports, blueprint registration issues, and config scattering |
+| **Single `main.py`** | Eliminates circular imports, blueprint registration issues, and config scattering |
 | **GCClient singleton** | One SDK connection, lazy API instantiation with caching |
 | **CDN-only frontend** | Bootstrap 5 + Chart.js + Bootstrap Icons via CDN — no npm/webpack complexity |
 | **Every SDK call in try/except** | Graceful degradation when OAuth scopes are missing |
@@ -207,7 +207,7 @@ The playground is the flagship feature. It lets you:
 | `Authentication failed` | Verify Client ID, Secret, and Region. Ensure the OAuth client uses "Client Credentials" grant type |
 | Dashboard shows `?` for stats | Your OAuth client is missing the required scopes (e.g., `users:readonly`) |
 | API Playground returns 403 | The method requires a scope your OAuth client doesn't have |
-| `Connection refused` on port 5000 | Another process is using port 5000. Change with `python app.py` and edit the port in `app.run()` |
+| `Connection refused` on port 5000 | Another process is using port 5000. Change with `python main.py` and edit the port in `app.run()` |
 
 ---
 
