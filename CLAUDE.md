@@ -13,7 +13,7 @@ cp .env.example .env
 # Edit .env with your Genesys Cloud OAuth client credentials
 
 # Start the development server
-python app.py
+python main.py
 # Runs at http://localhost:5000 with debug mode enabled
 ```
 
@@ -25,14 +25,14 @@ No build step, test suite, or linting configuration exists — this is an intent
 |---|---|
 | `GENESYS_CLIENT_ID` | OAuth 2.0 client ID |
 | `GENESYS_CLIENT_SECRET` | OAuth 2.0 client secret |
-| `GENESYS_REGION` | Region key (e.g. `us_east_1`); see `REGIONS` dict in `app.py` for all 13 options |
+| `GENESYS_REGION` | Region key (e.g. `us_east_1`); see `REGIONS` dict in `main.py` for all 13 options |
 | `FLASK_SECRET_KEY` | Flask session signing key |
 
 ## Architecture
 
-**Single-file Flask app** — all backend logic lives in `app.py` (639 lines). This is intentional to avoid blueprint complexity.
+**Single-file Flask app** — all backend logic lives in `main.py` (639 lines). This is intentional to avoid blueprint complexity.
 
-### GCClient (app.py:57–123)
+### GCClient (main.py:57–123)
 A singleton (`gc`) that wraps `PureCloudPlatformClientV2`. Key behaviors:
 - `connect()` authenticates via OAuth client credentials and stores the token in memory (never on disk).
 - `get_api(name)` lazily instantiates and caches SDK API class instances (e.g. `UsersApi`, `RoutingApi`).
@@ -54,7 +54,7 @@ Server-rendered Jinja2 templates using Bootstrap 5 + Chart.js (all via CDN — n
 
 | File | Purpose |
 |---|---|
-| `app.py` | Entire backend: GCClient class, all routes, template filters |
+| `main.py` | Entire backend: GCClient class, all routes, template filters |
 | `api_method_mappings.json` | Pre-generated SDK method index for the API Playground |
 | `templates/playground.html` | Interactive API executor (most complex template) |
 | `templates/analytics.html` | Real-time queue wallboard with 30s auto-refresh |
