@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Analytics — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-bar-chart-line text-info"></i> Queue Wallboard</h2>
+  <div>
+    <button id="btnRefresh" class="btn btn-info btn-sm" onclick="loadData()">
+      <i class="bi bi-arrow-clockwise"></i> Refresh
+    </button>
+    <button id="btnAutoRefresh" class="btn btn-outline-info btn-sm" onclick="toggleAutoRefresh()">
+      <i class="bi bi-play-circle"></i> Auto (30s)
+    </button>
+  </div>
+</div>
+
+<div id="loading" class="text-center py-5">
+  <div class="spinner-border text-info" role="status"></div>
+  <p class="text-muted mt-2">Loading queue observations...</p>
+</div>
+
+<div id="errorBox" class="alert alert-danger d-none" role="alert"></div>
+
+<div id="wallboard" class="d-none">
+  <div class="table-responsive">
+    <table class="table table-dark table-hover align-middle" id="wallboardTable">
+      <thead>
+        <tr>
+          <th>Queue</th>
+          <th class="text-center"><i class="bi bi-people-fill text-info" title="On Queue"></i> On Queue</th>
+          <th class="text-center"><i class="bi bi-chat-dots text-success" title="Interacting"></i> Interacting</th>
+          <th class="text-center"><i class="bi bi-hourglass-split text-warning" title="Waiting"></i> Waiting</th>
+          <th class="text-center"><i class="bi bi-person-check text-primary" title="Active"></i> Active</th>
+          <th class="text-center"><i class="bi bi-person-x text-secondary" title="Off Queue"></i> Off Queue</th>
+        </tr>
+      </thead>
+      <tbody id="wallboardBody"></tbody>
+    </table>
+  </div>
+  <p class="text-muted text-center small" id="lastUpdated"></p>
+</div>
+
+<!-- Charts -->
+<div id="chartsRow" class="row g-4 mt-3 d-none">
+  <div class="col-md-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">Queue Waiting</div>
+      <div class="card-body">
+        <canvas id="waitingChart" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">Queue Interacting</div>
+      <div class="card-body">
+        <canvas id="interactingChart" height="250"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let autoRefreshTimer = null;
+let waitingChart = null;
+let interactingChart = null;
+
+async function loadData() {
+  const loading = document.getElementById('loading');
+  const wallboard = document.getElementById('wallboard');
+  const errorBox = document.getElementById('errorBox');
+  const chartsRow = document.getElementById('chartsRow');
+
+  loading.classList.remove('d-none');
+  errorBox.classList.add('d-none');
+
+  try {
+    const resp = await fetch('/api/analytics/queues', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    const obs = data.observations || [];
+    const tbody = document.getElementById('wallboardBody');
+    tbody.innerHTML = '';
+
+    const queueNames = [];
+    const waitingData = [];
+    const interactingData = [];
+
+    obs.sort((a, b) => (a.queue_name || '').localeCompare(b.queue_name || ''));
+
+    obs.forEach(o => {
+      const m = o.metrics || {};
+      const onQueue     = m.oOnQueueUsers?.current  || 0;
+      const interacting = m.oInteracting?.current   || 0;
+      const waiting     = m.oWaiting?.current        || 0;
+      const active      = m.oActiveUsers?.current    || 0;
+      const offQueue    = m.oOffQueueUsers?.current   || 0;
+
+      queueNames.push(o.queue_name);
+      waitingData.push(waiting);
+      interactingData.push(interacting);
+
+      const waitClass = waiting > 5 ? 'text-danger fw-bold' : waiting > 0 ? 'text-warning' : '';
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><strong>${o.queue_name}</strong></td>
+        <td class="text-center">${onQueue}</td>
+        <td class="text-center text-success">${interacting}</td>
+        <td class="text-center ${waitClass}">${waiting}</td>
+        <td class="text-center">${active}</td>
+        <td class="text-center text-muted">${offQueue}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    loading.classList.add('d-none');
+    wallboard.classList.remove('d-none');
+    chartsRow.classList.remove('d-none');
+    document.getElementById('lastUpdated').textContent =
+      'Last updated: ' + new Date().toLocaleTimeString();
+
+    // Update charts
+    updateCharts(queueNames, waitingData, interactingData);
+
+  } catch (err) {
+    loading.classList.add('d-none');
+    errorBox.textContent = 'Error: ' + err.message;
+    errorBox.classList.remove('d-none');
+  }
+}
+
+function updateCharts(labels, waitingData, interactingData) {
+  const chartLabels = labels.slice(0, 15);  // top 15 only
+
+  if (waitingChart) waitingChart.destroy();
+  if (interactingChart) interactingChart.destroy();
+
+  const commonOpts = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { color: '#aaa', maxRotation: 45 }, grid: { color: '#333' } },
+      y: { beginAtZero: true, ticks: { color: '#aaa', stepSize: 1 }, grid: { color: '#333' } }
+    }
+  };
+
+  waitingChart = new Chart(document.getElementById('waitingChart'), {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [{ data: waitingData.slice(0, 15), backgroundColor: '#ffc107' }]
+    },
+    options: commonOpts
+  });
+
+  interactingChart = new Chart(document.getElementById('interactingChart'), {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [{ data: interactingData.slice(0, 15), backgroundColor: '#198754' }]
+    },
+    options: commonOpts
+  });
+}
+
+function toggleAutoRefresh() {
+  const btn = document.getElementById('btnAutoRefresh');
+  if (autoRefreshTimer) {
+    clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+    btn.innerHTML = '<i class="bi bi-play-circle"></i> Auto (30s)';
+    btn.classList.replace('btn-info', 'btn-outline-info');
+  } else {
+    autoRefreshTimer = setInterval(loadData, 30000);
+    btn.innerHTML = '<i class="bi bi-pause-circle"></i> Stop Auto';
+    btn.classList.replace('btn-outline-info', 'btn-info');
+  }
+}
+
+// Initial load
+loadData();
+</script>
+{% endblock %}

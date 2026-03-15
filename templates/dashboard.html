@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2><i class="bi bi-speedometer2 text-info"></i> Dashboard</h2>
+  <span class="text-muted">Region: <strong>{{ region }}</strong></span>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+  <div class="col-sm-6 col-md-4 col-xl-2">
+    <div class="card bg-dark border-info text-center h-100">
+      <div class="card-body">
+        <i class="bi bi-people fs-1 text-info"></i>
+        <h3 class="mt-2">{{ stats.total_users }}</h3>
+        <p class="text-muted mb-0">Users</p>
+      </div>
+      <div class="card-footer">
+        <a href="{{ url_for('users_list') }}" class="text-info text-decoration-none">
+          Browse <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-4 col-xl-2">
+    <div class="card bg-dark border-success text-center h-100">
+      <div class="card-body">
+        <i class="bi bi-diagram-3 fs-1 text-success"></i>
+        <h3 class="mt-2">{{ stats.total_queues }}</h3>
+        <p class="text-muted mb-0">Queues</p>
+      </div>
+      <div class="card-footer">
+        <a href="{{ url_for('queues_list') }}" class="text-success text-decoration-none">
+          Browse <i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-4 col-xl-2">
+    <div class="card bg-dark border-warning text-center h-100">
+      <div class="card-body">
+        <i class="bi bi-star fs-1 text-warning"></i>
+        <h3 class="mt-2">{{ stats.total_skills }}</h3>
+        <p class="text-muted mb-0">Skills</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-4 col-xl-2">
+    <div class="card bg-dark border-primary text-center h-100">
+      <div class="card-body">
+        <i class="bi bi-tag fs-1 text-primary"></i>
+        <h3 class="mt-2">{{ stats.total_wrapupcodes }}</h3>
+        <p class="text-muted mb-0">Wrapup Codes</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-4 col-xl-2">
+    <div class="card bg-dark border-light text-center h-100">
+      <div class="card-body">
+        <i class="bi bi-collection fs-1 text-light"></i>
+        <h3 class="mt-2">{{ stats.total_groups }}</h3>
+        <p class="text-muted mb-0">Groups</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-md-4 col-xl-2">
+    <div class="card bg-dark border-secondary text-center h-100">
+      <div class="card-body">
+        <i class="bi bi-geo-alt fs-1 text-secondary"></i>
+        <h3 class="mt-2">{{ stats.total_locations }}</h3>
+        <p class="text-muted mb-0">Locations</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header"><i class="bi bi-lightning-charge text-warning"></i> Quick Actions</div>
+      <div class="list-group list-group-flush">
+        <a href="{{ url_for('users_list') }}" class="list-group-item list-group-item-action bg-dark">
+          <i class="bi bi-search"></i> Search Users
+        </a>
+        <a href="{{ url_for('queues_list') }}" class="list-group-item list-group-item-action bg-dark">
+          <i class="bi bi-diagram-3"></i> Manage Queues
+        </a>
+        <a href="{{ url_for('analytics') }}" class="list-group-item list-group-item-action bg-dark">
+          <i class="bi bi-bar-chart-line"></i> Queue Wallboard
+        </a>
+        <a href="{{ url_for('playground') }}" class="list-group-item list-group-item-action bg-dark">
+          <i class="bi bi-terminal"></i> API Playground
+        </a>
+        <a href="{{ url_for('cheatsheet') }}" class="list-group-item list-group-item-action bg-dark">
+          <i class="bi bi-journal-code"></i> SDK Cheat Sheet
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header"><i class="bi bi-info-circle text-info"></i> Connection Info</div>
+      <div class="card-body">
+        <table class="table table-dark table-sm mb-0">
+          <tr><td class="text-muted">Region</td><td>{{ region }}</td></tr>
+          <tr><td class="text-muted">SDK Version</td><td>253.0.0</td></tr>
+          <tr><td class="text-muted">API Endpoints Indexed</td><td>{{ api_mappings | default({}) | length }} APIs</td></tr>
+          <tr><td class="text-muted">Status</td>
+            <td><span class="badge bg-success"><i class="bi bi-circle-fill" style="font-size:0.5rem;"></i> Connected</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    {% if errors %}
+    <div class="card bg-dark border-danger mt-3">
+      <div class="card-header text-danger"><i class="bi bi-exclamation-triangle"></i> Permission Warnings</div>
+      <div class="card-body">
+        <ul class="mb-0">
+          {% for err in errors %}
+          <li class="text-muted small">{{ err }}</li>
+          {% endfor %}
+        </ul>
+        <small class="text-muted">These may indicate missing OAuth scopes on your client.</small>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

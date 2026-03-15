@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}{{ user.name }} — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="{{ url_for('users_list') }}">Users</a></li>
+    <li class="breadcrumb-item active">{{ user.name }}</li>
+  </ol>
+</nav>
+
+<div class="row g-4">
+  <!-- User Info Card -->
+  <div class="col-md-4">
+    <div class="card bg-dark border-info">
+      <div class="card-header">
+        <h4 class="mb-0">
+          <i class="bi bi-person-circle text-info"></i>
+          {{ user.name }}
+        </h4>
+      </div>
+      <div class="card-body">
+        <table class="table table-dark table-sm mb-0">
+          <tr><td class="text-muted">ID</td><td><code>{{ user.id }}</code></td></tr>
+          <tr><td class="text-muted">Email</td><td>{{ user.email or '—' }}</td></tr>
+          <tr><td class="text-muted">Username</td><td>{{ user.username or '—' }}</td></tr>
+          <tr><td class="text-muted">Department</td><td>{{ user.department or '—' }}</td></tr>
+          <tr><td class="text-muted">Title</td><td>{{ user.title or '—' }}</td></tr>
+          <tr><td class="text-muted">State</td><td>{{ user.state or '—' }}</td></tr>
+          <tr>
+            <td class="text-muted">Presence</td>
+            <td><span class="badge bg-{{ user | presence_badge }}">{{ user | presence_text }}</span></td>
+          </tr>
+          {% if user.routing_status %}
+          <tr>
+            <td class="text-muted">Routing</td>
+            <td><span class="badge bg-secondary">{{ user.routing_status.status or '—' }}</span></td>
+          </tr>
+          {% endif %}
+          {% if user.division %}
+          <tr><td class="text-muted">Division</td><td>{{ user.division.name or user.division.id }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Queues -->
+  <div class="col-md-4">
+    <div class="card bg-dark border-success h-100">
+      <div class="card-header">
+        <i class="bi bi-diagram-3 text-success"></i> Queues ({{ queues | length }})
+      </div>
+      <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+        <table class="table table-dark table-sm table-hover mb-0">
+          {% for q in queues %}
+          <tr>
+            <td>
+              <a href="{{ url_for('queue_detail', queue_id=q.id) }}" class="text-decoration-none">
+                {{ q.name or q.id }}
+              </a>
+            </td>
+            <td class="text-end">
+              {% if q.joined is defined and q.joined %}
+                <span class="badge bg-success">Joined</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td class="text-muted text-center py-3">No queues assigned</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Skills -->
+  <div class="col-md-4">
+    <div class="card bg-dark border-warning h-100">
+      <div class="card-header">
+        <i class="bi bi-star text-warning"></i> Skills
+      </div>
+      <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+        <table class="table table-dark table-sm mb-0">
+          {% if user.skills %}
+          {% for skill in user.skills %}
+          <tr>
+            <td>{{ skill.name or skill.id }}</td>
+            <td class="text-end">
+              {% if skill.proficiency is defined %}
+              <span class="badge bg-warning text-dark">{{ skill.proficiency }}</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr><td class="text-muted text-center py-3">No skills assigned</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Roles -->
+<div class="row g-4 mt-2">
+  <div class="col-12">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header">
+        <i class="bi bi-shield-lock text-primary"></i> Roles
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-sm table-hover mb-0">
+          <thead>
+            <tr><th>Role</th><th>Division</th></tr>
+          </thead>
+          <tbody>
+            {% if roles and roles.roles %}
+            {% for grant in roles.roles %}
+            <tr>
+              <td>{{ grant.name or grant.id }}</td>
+              <td>
+                {% if grant.division %}
+                {{ grant.division.name or grant.division.id }}
+                {% else %}
+                —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+            {% else %}
+            <tr><td colspan="2" class="text-muted text-center py-3">No roles found</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Raw JSON Toggle -->
+<div class="mt-4">
+  <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#rawJson">
+    <i class="bi bi-code-slash"></i> Show Raw JSON
+  </button>
+  <div class="collapse mt-2" id="rawJson">
+    <pre class="bg-dark border border-secondary rounded p-3" style="max-height: 500px; overflow: auto;"><code>{{ user | to_json }}</code></pre>
+  </div>
+</div>
+{% endblock %}

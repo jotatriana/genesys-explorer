@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Login — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-5 col-lg-4">
+    <div class="card bg-dark border-info">
+      <div class="card-header text-center">
+        <h4><i class="bi bi-cloud-fill text-info"></i> Connect to Genesys Cloud</h4>
+        <p class="text-muted mb-0">Enter your OAuth Client Credentials</p>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('login') }}">
+
+          <div class="mb-3">
+            <label for="client_id" class="form-label">Client ID</label>
+            <input type="text" class="form-control" id="client_id" name="client_id"
+                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required autofocus>
+          </div>
+
+          <div class="mb-3">
+            <label for="client_secret" class="form-label">Client Secret</label>
+            <div class="input-group">
+              <input type="password" class="form-control" id="client_secret" name="client_secret"
+                     placeholder="Your client secret" required>
+              <button class="btn btn-outline-secondary" type="button" id="toggleSecret">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="region" class="form-label">Region</label>
+            <select class="form-select" id="region" name="region">
+              {% for key, label in regions.items() %}
+              <option value="{{ key }}" {% if key == 'us_east_1' %}selected{% endif %}>
+                {{ label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-info btn-lg">
+              <i class="bi bi-plug"></i> Connect
+            </button>
+          </div>
+        </form>
+      </div>
+      <div class="card-footer text-center text-muted">
+        <small>
+          <i class="bi bi-shield-lock"></i>
+          Credentials are used in-memory only. Never stored to disk.
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('toggleSecret').addEventListener('click', function() {
+  const input = document.getElementById('client_secret');
+  const icon = this.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.classList.replace('bi-eye', 'bi-eye-slash');
+  } else {
+    input.type = 'password';
+    icon.classList.replace('bi-eye-slash', 'bi-eye');
+  }
+});
+</script>
+{% endblock %}

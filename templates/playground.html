@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block title %}API Playground — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<h2 class="mb-3"><i class="bi bi-terminal text-info"></i> API Playground</h2>
+
+<div class="row g-4">
+  <!-- Left Panel: Controls -->
+  <div class="col-lg-5">
+    <div class="card bg-dark border-info">
+      <div class="card-header">
+        <i class="bi bi-gear"></i> Request Builder
+      </div>
+      <div class="card-body">
+
+        <!-- API Selection -->
+        <div class="mb-3">
+          <label class="form-label fw-bold">1. Select API</label>
+          <select class="form-select" id="apiSelect" onchange="loadMethods()">
+            <option value="">-- Choose an API --</option>
+            {% for api_name, methods in api_mappings | dictsort %}
+            <option value="{{ api_name }}" data-class="{{ api_name | replace(' ', '') }}Api" data-count="{{ methods | length }}">
+              {{ api_name }} ({{ methods | length }} methods)
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Method Filter + Selection -->
+        <div class="mb-3">
+          <label class="form-label fw-bold">2. Select Method</label>
+          <input type="text" class="form-control mb-2" id="methodFilter"
+                 placeholder="Filter methods..." oninput="filterMethods()">
+          <select class="form-select" id="methodSelect" size="8" onchange="selectMethod()"
+                  style="font-family: monospace; font-size: 0.85rem;">
+            <option value="" disabled>Select an API first</option>
+          </select>
+        </div>
+
+        <!-- Method Info -->
+        <div id="methodInfo" class="d-none mb-3">
+          <div class="card bg-black border-secondary">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between">
+                <span>
+                  <span id="httpBadge" class="badge"></span>
+                  <code id="methodName" class="ms-1"></code>
+                </span>
+                <span>
+                  <span id="pathDisplay" class="text-muted small"></span>
+                </span>
+              </div>
+              <div class="mt-1">
+                <span class="text-muted small">Body: </span>
+                <code id="bodyType" class="text-warning">—</code>
+                <span class="text-muted small ms-2">Returns: </span>
+                <code id="returnType" class="text-success"></code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parameters -->
+        <div class="mb-3">
+          <label class="form-label fw-bold">3. Parameters</label>
+          <div id="paramsContainer">
+            <p class="text-muted small">Select a method to see its parameters.</p>
+          </div>
+        </div>
+
+        <!-- Body JSON -->
+        <div class="mb-3" id="bodySection" style="display:none;">
+          <label class="form-label fw-bold">4. Request Body (JSON)</label>
+          <textarea class="form-control font-monospace" id="bodyInput" rows="8"
+                    placeholder='{"key": "value"}'
+                    style="font-size: 0.85rem;"></textarea>
+          <small class="text-muted">Paste or type the JSON body for POST/PUT/PATCH methods.</small>
+        </div>
+
+        <!-- Execute Button -->
+        <div class="d-grid">
+          <button class="btn btn-info btn-lg" id="btnExecute" onclick="executeRequest()" disabled>
+            <i class="bi bi-play-fill"></i> Execute
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Response -->
+  <div class="col-lg-7">
+    <div class="card bg-dark border-secondary" id="responseCard">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-arrow-return-right"></i> Response</span>
+        <span>
+          <span id="respStatus" class="badge bg-secondary">Waiting...</span>
+          <span id="respTime" class="text-muted small ms-2"></span>
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <div id="responseLoading" class="text-center py-5 d-none">
+          <div class="spinner-border text-info" role="status"></div>
+        </div>
+        <pre class="m-0 p-3" id="responseBody"
+             style="max-height: 70vh; overflow: auto; font-size: 0.8rem; background: #0d1117; color: #c9d1d9;">
+Select an API and method, then click Execute.</pre>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="card bg-dark border-secondary mt-3">
+      <div class="card-header d-flex justify-content-between">
+        <span><i class="bi bi-clock-history"></i> History</span>
+        <button class="btn btn-outline-secondary btn-sm" onclick="clearHistory()">Clear</button>
+      </div>
+      <div class="list-group list-group-flush" id="historyList" style="max-height: 300px; overflow-y: auto;">
+        <div class="list-group-item bg-dark text-muted text-center small">No requests yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Global state
+let allMethods = [];
+let currentMethod = null;
+let history = [];
+
+// Color map for HTTP verbs
+const verbColors = {
+  GET: 'success', POST: 'primary', PUT: 'warning',
+  PATCH: 'info', DELETE: 'danger'
+};
+
+// --- Load methods for selected API ---
+async function loadMethods() {
+  const apiName = document.getElementById('apiSelect').value;
+  const select = document.getElementById('methodSelect');
+  select.innerHTML = '<option disabled>Loading...</option>';
+
+  if (!apiName) {
+    select.innerHTML = '<option disabled>Select an API first</option>';
+    allMethods = [];
+    return;
+  }
+
+  try {
+    const resp = await fetch(`/api/playground/methods/${encodeURIComponent(apiName)}`);
+    allMethods = await resp.json();
+
+    renderMethodList(allMethods);
+    document.getElementById('methodFilter').value = '';
+    document.getElementById('methodInfo').classList.add('d-none');
+    document.getElementById('paramsContainer').innerHTML =
+      '<p class="text-muted small">Select a method to see its parameters.</p>';
+    document.getElementById('bodySection').style.display = 'none';
+    document.getElementById('btnExecute').disabled = true;
+  } catch (err) {
+    select.innerHTML = `<option disabled>Error: ${err.message}</option>`;
+  }
+}
+
+function renderMethodList(methods) {
+  const select = document.getElementById('methodSelect');
+  select.innerHTML = '';
+  methods.forEach((m, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    const verb = (m.http || '?').padEnd(7);
+    const ret = m.returns && m.returns !== 'None' ? ` -> ${m.returns}` : '';
+    opt.textContent = `${verb} ${m.method}${ret}`;
+    select.appendChild(opt);
+  });
+  if (methods.length === 0) {
+    select.innerHTML = '<option disabled>No methods match filter</option>';
+  }
+}
+
+function filterMethods() {
+  const q = document.getElementById('methodFilter').value.toLowerCase();
+  if (!q) {
+    renderMethodList(allMethods);
+    return;
+  }
+  const filtered = allMethods.filter(m =>
+    m.method.toLowerCase().includes(q) ||
+    (m.returns || '').toLowerCase().includes(q) ||
+    (m.body || '').toLowerCase().includes(q) ||
+    (m.path || '').toLowerCase().includes(q)
+  );
+  renderMethodList(filtered);
+}
+
+// --- Select a method and show its details ---
+function selectMethod() {
+  const select = document.getElementById('methodSelect');
+  const idx = parseInt(select.value);
+  // Get the actual method from the displayed list
+  const filterQ = document.getElementById('methodFilter').value.toLowerCase();
+  let methods = allMethods;
+  if (filterQ) {
+    methods = allMethods.filter(m =>
+      m.method.toLowerCase().includes(filterQ) ||
+      (m.returns || '').toLowerCase().includes(filterQ) ||
+      (m.body || '').toLowerCase().includes(filterQ) ||
+      (m.path || '').toLowerCase().includes(filterQ)
+    );
+  }
+  currentMethod = methods[idx];
+  if (!currentMethod) return;
+
+  // Show method info
+  const info = document.getElementById('methodInfo');
+  info.classList.remove('d-none');
+
+  const badge = document.getElementById('httpBadge');
+  badge.textContent = currentMethod.http;
+  badge.className = `badge bg-${verbColors[currentMethod.http] || 'secondary'}`;
+
+  document.getElementById('methodName').textContent = currentMethod.method;
+  document.getElementById('pathDisplay').textContent = currentMethod.path || '';
+  document.getElementById('bodyType').textContent = currentMethod.body || '—';
+  document.getElementById('returnType').textContent = currentMethod.returns || 'None';
+
+  // Extract path params
+  const paramsDiv = document.getElementById('paramsContainer');
+  paramsDiv.innerHTML = '';
+
+  const pathParams = (currentMethod.path || '').match(/\{(\w+)\}/g) || [];
+  if (pathParams.length > 0) {
+    const label = document.createElement('small');
+    label.className = 'text-muted';
+    label.textContent = 'Path parameters (required):';
+    paramsDiv.appendChild(label);
+
+    pathParams.forEach(p => {
+      const paramName = p.replace(/[{}]/g, '');
+      // Convert camelCase to snake_case for SDK
+      const snakeName = paramName.replace(/([A-Z])/g, '_$1').toLowerCase();
+      const div = document.createElement('div');
+      div.className = 'input-group input-group-sm mt-1';
+      div.innerHTML = `
+        <span class="input-group-text bg-dark text-info" style="min-width:140px;">${snakeName}</span>
+        <input type="text" class="form-control bg-dark text-light param-input"
+               data-param="${snakeName}" placeholder="${paramName}">
+      `;
+      paramsDiv.appendChild(div);
+    });
+  } else {
+    paramsDiv.innerHTML = '<small class="text-muted">No path parameters.</small>';
+  }
+
+  // Show body section for POST/PUT/PATCH
+  const bodySection = document.getElementById('bodySection');
+  if (['POST', 'PUT', 'PATCH'].includes(currentMethod.http) && currentMethod.body) {
+    bodySection.style.display = 'block';
+    document.getElementById('bodyInput').placeholder =
+      `Paste ${currentMethod.body} JSON here...\n{\n  "key": "value"\n}`;
+  } else {
+    bodySection.style.display = 'none';
+  }
+
+  document.getElementById('btnExecute').disabled = false;
+}
+
+// --- Execute the request ---
+async function executeRequest() {
+  if (!currentMethod) return;
+
+  const apiName = document.getElementById('apiSelect').value;
+  const apiOption = document.getElementById('apiSelect').selectedOptions[0];
+  const apiClass = apiOption.dataset.class;
+
+  // Gather params
+  const params = {};
+  document.querySelectorAll('.param-input').forEach(input => {
+    if (input.value.trim()) {
+      params[input.dataset.param] = input.value.trim();
+    }
+  });
+
+  // Get body
+  let body = null;
+  const bodyText = document.getElementById('bodyInput').value.trim();
+  if (bodyText) {
+    try {
+      body = JSON.parse(bodyText);
+    } catch (err) {
+      alert('Invalid JSON body: ' + err.message);
+      return;
+    }
+  }
+
+  // Show loading
+  const btn = document.getElementById('btnExecute');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Executing...';
+  document.getElementById('responseLoading').classList.remove('d-none');
+  document.getElementById('responseBody').textContent = '';
+  document.getElementById('respStatus').className = 'badge bg-secondary';
+  document.getElementById('respStatus').textContent = 'Loading...';
+
+  try {
+    const resp = await fetch('/api/playground/execute', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        api_class: apiClass,
+        method: currentMethod.method,
+        params: params,
+        body: body
+      })
+    });
+    const data = await resp.json();
+
+    const statusBadge = document.getElementById('respStatus');
+    const timeSpan = document.getElementById('respTime');
+    const responseBody = document.getElementById('responseBody');
+
+    timeSpan.textContent = `${data.elapsed_ms}ms`;
+
+    if (data.success) {
+      statusBadge.className = 'badge bg-success';
+      statusBadge.textContent = '200 OK';
+      responseBody.textContent = JSON.stringify(data.result, null, 2);
+    } else {
+      statusBadge.className = 'badge bg-danger';
+      statusBadge.textContent = `${data.status || 'Error'}`;
+      const errorDisplay = {
+        error: data.error,
+        error_body: data.error_body,
+        traceback: data.traceback
+      };
+      responseBody.textContent = JSON.stringify(errorDisplay, null, 2);
+    }
+
+    // Add to history
+    addToHistory({
+      time: new Date().toLocaleTimeString(),
+      method: currentMethod.http,
+      name: currentMethod.method,
+      success: data.success,
+      elapsed: data.elapsed_ms,
+      api: apiName
+    });
+
+  } catch (err) {
+    document.getElementById('respStatus').className = 'badge bg-danger';
+    document.getElementById('respStatus').textContent = 'Network Error';
+    document.getElementById('responseBody').textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-play-fill"></i> Execute';
+    document.getElementById('responseLoading').classList.add('d-none');
+  }
+}
+
+// --- History ---
+function addToHistory(entry) {
+  history.unshift(entry);
+  if (history.length > 50) history.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  history.forEach(h => {
+    const item = document.createElement('div');
+    item.className = 'list-group-item bg-dark py-1 d-flex justify-content-between';
+    const badge = `<span class="badge bg-${verbColors[h.method] || 'secondary'} me-1">${h.method}</span>`;
+    const status = h.success
+      ? '<span class="badge bg-success">OK</span>'
+      : '<span class="badge bg-danger">ERR</span>';
+    item.innerHTML = `
+      <span>${badge} <code class="small">${h.name}</code></span>
+      <span>${status} <small class="text-muted">${h.elapsed}ms @ ${h.time}</small></span>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function clearHistory() {
+  history = [];
+  document.getElementById('historyList').innerHTML =
+    '<div class="list-group-item bg-dark text-muted text-center small">No requests yet</div>';
+}
+</script>
+{% endblock %}

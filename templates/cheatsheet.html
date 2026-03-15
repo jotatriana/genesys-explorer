@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Cheat Sheet — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<h2 class="mb-3"><i class="bi bi-journal-code text-info"></i> SDK Cheat Sheet</h2>
+
+<!-- Search -->
+<div class="mb-3">
+  <input type="text" class="form-control bg-dark text-light" id="cheatSearch"
+         placeholder="Search cheat sheet... (e.g., get_user, QueueObservationQuery, presence)">
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs" role="tablist">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#mainSheet" type="button">
+      <i class="bi bi-file-code"></i> Main Cheat Sheet
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#extSheet" type="button">
+      <i class="bi bi-file-earmark-code"></i> Method → Model Extension
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content mt-2">
+  <div class="tab-pane fade show active" id="mainSheet" role="tabpanel">
+    <pre class="bg-dark border border-secondary rounded p-3 cheat-content" style="max-height: 75vh; overflow: auto; font-size: 0.85rem;">{{ sheets.main }}</pre>
+  </div>
+  <div class="tab-pane fade" id="extSheet" role="tabpanel">
+    <pre class="bg-dark border border-secondary rounded p-3 cheat-content" style="max-height: 75vh; overflow: auto; font-size: 0.85rem;">{{ sheets.extension }}</pre>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('cheatSearch').addEventListener('input', function() {
+  const query = this.value.toLowerCase();
+  document.querySelectorAll('.cheat-content').forEach(pre => {
+    if (!query) {
+      pre.innerHTML = pre.textContent;
+      return;
+    }
+    const text = pre.textContent;
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    pre.innerHTML = text.replace(regex, '<mark>$1</mark>');
+  });
+});
+</script>
+{% endblock %}

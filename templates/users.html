@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Users — Genesys Cloud Explorer{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-people text-info"></i> Users <small class="text-muted">({{ total }})</small></h2>
+</div>
+
+<!-- Search & Filters -->
+<div class="card bg-dark border-secondary mb-3">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('users_list') }}" class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="form-label">Search</label>
+        <input type="text" class="form-control" name="q" value="{{ search_q }}"
+               placeholder="Name, email, or department...">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">State</label>
+        <select class="form-select" name="state">
+          <option value="active" {% if state_filter == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if state_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+          <option value="any" {% if state_filter == 'any' %}selected{% endif %}>Any</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Per Page</label>
+        <select class="form-select" name="page_size">
+          {% for ps in [10, 25, 50, 100] %}
+          <option value="{{ ps }}" {% if page_size == ps %}selected{% endif %}>{{ ps }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-info w-100">
+          <i class="bi bi-search"></i> Search
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Users Table -->
+<div class="table-responsive">
+  <table class="table table-dark table-hover table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Department</th>
+        <th>Title</th>
+        <th>Presence</th>
+        <th>Routing</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr>
+        <td>
+          <strong>{{ user.name or '—' }}</strong>
+        </td>
+        <td class="text-muted">{{ user.email or '—' }}</td>
+        <td>{{ user.department or '—' }}</td>
+        <td>{{ user.title or '—' }}</td>
+        <td>
+          <span class="badge bg-{{ user | presence_badge }}">
+            {{ user | presence_text }}
+          </span>
+        </td>
+        <td>
+          {% if user.routing_status and user.routing_status.status %}
+            <span class="badge bg-secondary">{{ user.routing_status.status }}</span>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('user_detail', user_id=user.id) }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-eye"></i> View
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="text-center text-muted py-4">No users found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Pagination -->
+{% if page_count > 1 %}
+<nav>
+  <ul class="pagination justify-content-center">
+    <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('users_list', page=page-1, page_size=page_size, q=search_q, state=state_filter) }}">
+        &laquo; Prev
+      </a>
+    </li>
+
+    {% for p in range(1, page_count + 1) %}
+      {% if p <= 3 or p > page_count - 3 or (p >= page - 2 and p <= page + 2) %}
+    <li class="page-item {% if p == page %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('users_list', page=p, page_size=page_size, q=search_q, state=state_filter) }}">{{ p }}</a>
+    </li>
+      {% elif p == 4 or p == page_count - 3 %}
+    <li class="page-item disabled"><span class="page-link">...</span></li>
+      {% endif %}
+    {% endfor %}
+
+    <li class="page-item {% if page >= page_count %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('users_list', page=page+1, page_size=page_size, q=search_q, state=state_filter) }}">
+        Next &raquo;
+      </a>
+    </li>
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}
