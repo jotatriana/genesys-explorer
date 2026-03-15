@@ -3,7 +3,7 @@ Genesys Cloud Explorer — Flask Web Application
 A visual tool for exploring and managing Genesys Cloud PureCloud APIs.
 
 Run:  python main.py
-Then:  http://localhost:5000
+Then:  http://localhost:5001
 """
 
 import json
@@ -636,4 +636,4 @@ def presence_text_filter(user):
 # Main
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True, host="0.0.0.0", port=5001)

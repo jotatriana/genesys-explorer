@@ -123,7 +123,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Open your browser to **http://localhost:5000**
+Open your browser to **http://localhost:5001**
 
 1. Enter your OAuth Client ID, Client Secret, and select your region
 2. Click **Connect** to authenticate
@@ -207,7 +207,7 @@ The playground is the flagship feature. It lets you:
 | `Authentication failed` | Verify Client ID, Secret, and Region. Ensure the OAuth client uses "Client Credentials" grant type |
 | Dashboard shows `?` for stats | Your OAuth client is missing the required scopes (e.g., `users:readonly`) |
 | API Playground returns 403 | The method requires a scope your OAuth client doesn't have |
-| `Connection refused` on port 5000 | Another process is using port 5000. Change with `python main.py` and edit the port in `app.run()` |
+| `Connection refused` on port 5001 | Another process is using port 5001. Change with `python main.py` and edit the port in `app.run()` |
 
 ---
 

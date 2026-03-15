@@ -14,7 +14,7 @@ cp .env.example .env
 
 # Start the development server
 python main.py
-# Runs at http://localhost:5000 with debug mode enabled
+# Runs at http://localhost:5001 with debug mode enabled
 ```
 
 No build step, test suite, or linting configuration exists — this is an intentionally minimal local development tool.
